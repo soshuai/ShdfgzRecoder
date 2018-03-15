@@ -1,19 +1,13 @@
 package cn.cherish.shdfgzrecoder;
-
-import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ActivityInfo;
-import android.content.pm.PackageManager;
 import android.hardware.Camera;
 import android.hardware.Camera.PreviewCallback;
 import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.Bundle;
-import android.os.SystemClock;
-import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 import android.view.Display;
 import android.view.KeyEvent;
@@ -26,8 +20,8 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
-import android.widget.Toast;
 
+import org.bytedeco.javacpp.avutil;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
 
@@ -35,14 +29,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ShortBuffer;
+import java.text.SimpleDateFormat;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
 
 import cn.cherish.shdfgzrecoder.utils.FileUtils;
-
-import static cn.cherish.shdfgzrecoder.utils.CommonUtils.SIZE_1;
-import static cn.cherish.shdfgzrecoder.utils.CommonUtils.SIZE_2;
 
 public class RecordActivity extends Activity implements OnClickListener {
     private final static String LOG_TAG = "RecordActivity";
@@ -66,6 +59,7 @@ public class RecordActivity extends Activity implements OnClickListener {
     int imagesIndex, samplesIndex;
     private String ffmpeg_link = "";
     private FFmpegFrameRecorder recorder;
+    private FFmpegFrameRecorder recorderMp4;
     private boolean isPreviewOn = false;
     private int sampleAudioRateInHz = 44100;
     private int imageWidth = 320;
@@ -82,14 +76,7 @@ public class RecordActivity extends Activity implements OnClickListener {
     private int screenWidth, screenHeight;
     private Button btnRecorderControl;
     private static final String KEY_STREAM_URL = "stream_url";
-    private MediaRecorder recorderss;
     private File videoFile;
-
-    int rotationRecord = 90;
-    int frontOri;
-    int cameraType = 0;
-    boolean flagRecord = false;//是否正在录像
-    private SurfaceHolder mHolder;
 
     public static Intent makeIntent(String streamUrl) {
         Intent intent = new Intent(AppContext.getInstance(), RecordActivity.class);
@@ -110,7 +97,6 @@ public class RecordActivity extends Activity implements OnClickListener {
     protected void onDestroy() {
         super.onDestroy();
 
-        endRecord();
         recording = false;
 
         if (cameraView != null) {
@@ -172,6 +158,24 @@ public class RecordActivity extends Activity implements OnClickListener {
         Log.i(LOG_TAG, "cameara preview start: OK");
     }
 
+
+
+    public void startRecording() {
+
+        initRecorder();
+
+        try {
+            recorder.start();
+            recorderMp4.start();
+            startTime = System.currentTimeMillis();
+            recording = true;
+            audioThread.start();
+
+        } catch (FFmpegFrameRecorder.Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     //---------------------------------------
     // initialize ffmpeg_recorder
     //---------------------------------------
@@ -200,26 +204,16 @@ public class RecordActivity extends Activity implements OnClickListener {
         // Set in the surface changed method
         recorder.setFrameRate(frameRate);
 
-        Log.i(LOG_TAG, "recorder initialize success");
+        videoDir();
+        recorderMp4=new FFmpegFrameRecorder(videoFile,imageWidth,imageHeight,0);
+        recorderMp4.setFrameRate(28);//
+        recorderMp4.setFormat("mp4");
+        recorderMp4.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
 
+        Log.i(LOG_TAG, "recorder initialize success");
         audioRecordRunnable = new AudioRecordRunnable();
         audioThread = new Thread(audioRecordRunnable);
         runAudioThread = true;
-    }
-
-    public void startRecording() {
-
-        initRecorder();
-
-        try {
-            recorder.start();
-            startTime = System.currentTimeMillis();
-            recording = true;
-            audioThread.start();
-
-        } catch (FFmpegFrameRecorder.Exception e) {
-            e.printStackTrace();
-        }
     }
 
     public void stopRecording() {
@@ -256,6 +250,10 @@ public class RecordActivity extends Activity implements OnClickListener {
                                 recorder.setTimestamp(t);
                             }
                             recorder.record(images[i % images.length]);
+                            if (t > recorderMp4.getTimestamp()) {
+                                recorderMp4.setTimestamp(t);
+                            }
+                            recorderMp4.record(images[i % images.length]);
                         }
                     }
 
@@ -270,6 +268,7 @@ public class RecordActivity extends Activity implements OnClickListener {
                     }
                     for (int i = firstIndex; i <= lastIndex; i++) {
                         recorder.recordSamples(samples[i % samples.length]);
+                        recorderMp4.recordSamples(samples[i % samples.length]);
                     }
                 } catch (FFmpegFrameRecorder.Exception e) {
                     Log.v(LOG_TAG, e.getMessage());
@@ -282,10 +281,13 @@ public class RecordActivity extends Activity implements OnClickListener {
             try {
                 recorder.stop();
                 recorder.release();
+                recorderMp4.stop();
+                recorderMp4.release();
             } catch (FFmpegFrameRecorder.Exception e) {
                 e.printStackTrace();
             }
             recorder = null;
+            recorderMp4 = null;
 
         }
     }
@@ -371,6 +373,7 @@ public class RecordActivity extends Activity implements OnClickListener {
                     if (recording) {
                         if (RECORD_LENGTH <= 0) try {
                             recorder.recordSamples(audioData);
+                            recorderMp4.recordSamples(audioData);
                             //Log.v(LOG_TAG,"recording " + 1024*i + " to " + 1024*i+1024);
                         } catch (FFmpegFrameRecorder.Exception e) {
                             Log.v(LOG_TAG, e.getMessage());
@@ -396,7 +399,7 @@ public class RecordActivity extends Activity implements OnClickListener {
     //---------------------------------------------
     class CameraView extends SurfaceView implements SurfaceHolder.Callback, PreviewCallback {
 
-//        private SurfaceHolder mHolder;
+        private SurfaceHolder mHolder;
         private Camera mCamera;
 
         public CameraView(Context context, Camera camera) {
@@ -471,17 +474,6 @@ public class RecordActivity extends Activity implements OnClickListener {
             } catch (RuntimeException e) {
                 // The camera has probably just been released, ignore.
             }
-
-            endRecord();
-            if (cameraView != null) {
-                cameraView.stopPreview();
-            }
-
-            if (cameraDevice != null) {
-                cameraDevice.stopPreview();
-                cameraDevice.release();
-                cameraDevice = null;
-            }
         }
 
         public void startPreview() {
@@ -520,6 +512,10 @@ public class RecordActivity extends Activity implements OnClickListener {
                             recorder.setTimestamp(t);
                         }
                         recorder.record(yuvImage);
+                        if (t > recorderMp4.getTimestamp()) {
+                            recorderMp4.setTimestamp(t);
+                        }
+                        recorderMp4.record(yuvImage);
                     } catch (FFmpegFrameRecorder.Exception e) {
                         Log.v(LOG_TAG, e.getMessage());
                         e.printStackTrace();
@@ -528,77 +524,8 @@ public class RecordActivity extends Activity implements OnClickListener {
         }
     }
 
-    private boolean startRecord() {
-
-        if (recorderss == null) {
-            recorderss = new MediaRecorder();
-        }
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
-                || cameraDevice == null || recorder == null) {
-            cameraDevice = null;
-            recorderss = null;
-            //还是没权限啊
-            return false;
-        }
-
-//        try {
-            recorderss.setCamera(cameraDevice);
-            // 这两项需要放在setOutputFormat之前
-            recorderss.setAudioSource(MediaRecorder.AudioSource.CAMCORDER);
-            recorderss.setVideoSource(MediaRecorder.VideoSource.CAMERA);
-            // Set output file format，输出格式
-            recorderss.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-
-            //必须在setEncoder之前
-            recorderss.setVideoFrameRate(15);  //帧数  一分钟帧，15帧就够了
-            recorderss.setVideoSize(SIZE_1, SIZE_2);//这个大小就够了
-
-            // 这两项需要放在setOutputFormat之后
-            recorderss.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-            recorderss.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-
-            recorderss.setVideoEncodingBitRate(3 * SIZE_1 * SIZE_2);//第一个数字越大，清晰度就越高，考虑文件大小的缘故，就调整为1
-            int frontRotation;
-            if (rotationRecord == 180) {
-                //反向的前置
-                frontRotation = 180;
-            } else {
-                //正向的前置
-                frontRotation = (rotationRecord == 0) ? 270 - frontOri : frontOri; //录制下来的视屏选择角度，此处为前置
-            }
-            recorderss.setOrientationHint((cameraType == 1) ? frontRotation : rotationRecord);
-            //把摄像头的画面给它
-            recorderss.setPreviewDisplay(mHolder.getSurface());
-            //创建好视频文件用来保存
-            videoDir();
-            if (videoFile != null) {
-                //设置创建好的输入路径
-                recorderss.setOutputFile(videoFile.getPath());
-                try {
-                    recorderss.prepare();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                recorderss.start();
-                //不能旋转啦
-//                orientationEventListener.disable();
-                flagRecord = true;
-            }
-//        } catch (Exception e) {
-//            //一般没有录制权限或者录制参数出现问题都走这里
-////            e.printStackTrace();
-//            //还是没权限啊
-////            recorderss.reset();
-////            recorderss.release();
-////            recorder = null;
-////            showCameraPermission();
-////            FileUtils.deleteFile(videoFile.getPath());
-////            return false;
-//        }
-        return true;
-
-    }
     public String videoDir() {
+        SimpleDateFormat ft = new SimpleDateFormat ("yyyy-MM-dd");
         File sampleDir = new File(FileUtils.getAppPath());
         Log.i("///",FileUtils.getAppPath());
         if (!sampleDir.exists()) {
@@ -607,34 +534,11 @@ public class RecordActivity extends Activity implements OnClickListener {
         File vecordDir = sampleDir;
         // 创建文件
         try {
-            videoFile = File.createTempFile("recording", ".mp4", vecordDir);
+            videoFile = File.createTempFile("公证"+ft.format(new Date()), ".mp4", vecordDir);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         return null;
     }
-    private void endRecord() {
-        //反正多次进入，比如surface的destroy和界面onPause
-        if (!flagRecord) {
-            return;
-        }
-        flagRecord = false;
-        try {
-            if (recorderss != null) {
-                recorderss.stop();
-                recorderss.reset();
-                recorderss.release();
-//                orientationEventListener.enable();
-                recorderss = null;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void showCameraPermission() {
-        Toast.makeText(this, "您没有开启相机权限或者录音权限", Toast.LENGTH_SHORT).show();
-    }
-
 }
