@@ -128,7 +128,7 @@ public class RecordActivity extends Activity implements OnClickListener {
 
         /* add control button: start and stop */
         btnRecorderControl = (Button) findViewById(R.id.recorder_control);
-        btnRecorderControl.setText("Start");
+        btnRecorderControl.setText("开始");
         btnRecorderControl.setOnClickListener(this);
 
         /* add camera view */
@@ -143,7 +143,7 @@ public class RecordActivity extends Activity implements OnClickListener {
             prev_rh = (int) (1.0 * display_width_d * live_height / live_width);
         }
         layoutParam = new RelativeLayout.LayoutParams(screenWidth, screenHeight);
-        layoutParam.topMargin = 200;
+        layoutParam.topMargin = screenHeight/7;
 //        layoutParam.leftMargin = (int) (1.0 * bg_screen_bx * screenWidth / bg_width);
         try {
             cameraDevice = Camera.open();
@@ -201,14 +201,15 @@ public class RecordActivity extends Activity implements OnClickListener {
         recorder.setVideoCodec(28);
         recorder.setFormat("flv");
         recorder.setSampleRate(sampleAudioRateInHz);
-        // Set in the surface changed method
         recorder.setFrameRate(frameRate);
 
         videoDir();
-        recorderMp4=new FFmpegFrameRecorder(videoFile,imageWidth,imageHeight,0);
-        recorderMp4.setFrameRate(28);//
+        recorderMp4=new FFmpegFrameRecorder(videoFile,imageWidth,imageHeight,1);
+        recorder.setVideoCodec(28);
         recorderMp4.setFormat("mp4");
-        recorderMp4.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
+        recorder.setSampleRate(sampleAudioRateInHz);
+//        recorderMp4.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
+        recorderMp4.setFrameRate(frameRate);//
 
         Log.i(LOG_TAG, "recorder initialize success");
         audioRecordRunnable = new AudioRecordRunnable();
@@ -227,67 +228,71 @@ public class RecordActivity extends Activity implements OnClickListener {
         audioRecordRunnable = null;
         audioThread = null;
 
-        if (recorder != null && recording) {
-            if (RECORD_LENGTH > 0) {
-                Log.v(LOG_TAG, "Writing frames");
-                try {
-                    int firstIndex = imagesIndex % samples.length;
-                    int lastIndex = (imagesIndex - 1) % images.length;
-                    if (imagesIndex <= images.length) {
-                        firstIndex = 0;
-                        lastIndex = imagesIndex - 1;
-                    }
-                    if ((startTime = timestamps[lastIndex] - RECORD_LENGTH * 1000000L) < 0) {
-                        startTime = 0;
-                    }
-                    if (lastIndex < firstIndex) {
-                        lastIndex += images.length;
-                    }
-                    for (int i = firstIndex; i <= lastIndex; i++) {
-                        long t = timestamps[i % timestamps.length] - startTime;
-                        if (t >= 0) {
-                            if (t > recorder.getTimestamp()) {
-                                recorder.setTimestamp(t);
-                            }
-                            recorder.record(images[i % images.length]);
-                            if (t > recorderMp4.getTimestamp()) {
-                                recorderMp4.setTimestamp(t);
-                            }
-                            recorderMp4.record(images[i % images.length]);
+        if (recorder != null ||recorderMp4!=null) {
+            if (recording){
+                if (RECORD_LENGTH > 0) {
+                    Log.v(LOG_TAG, "Writing frames");
+                    try {
+                        int firstIndex = imagesIndex % samples.length;
+                        int lastIndex = (imagesIndex - 1) % images.length;
+                        if (imagesIndex <= images.length) {
+                            firstIndex = 0;
+                            lastIndex = imagesIndex - 1;
                         }
-                    }
+                        if ((startTime = timestamps[lastIndex] - RECORD_LENGTH * 1000000L) < 0) {
+                            startTime = 0;
+                        }
+                        if (lastIndex < firstIndex) {
+                            lastIndex += images.length;
+                        }
+                        for (int i = firstIndex; i <= lastIndex; i++) {
+                            long t = timestamps[i % timestamps.length] - startTime;
+                            if (t >= 0) {
+                                if (t > recorder.getTimestamp()) {
+                                    recorder.setTimestamp(t);
+                                }
+                                recorder.record(images[i % images.length]);
+                                if (t > recorderMp4.getTimestamp()) {
+                                    recorderMp4.setTimestamp(t);
+                                }
+                                recorderMp4.record(images[i % images.length]);
+                            }
+                        }
 
-                    firstIndex = samplesIndex % samples.length;
-                    lastIndex = (samplesIndex - 1) % samples.length;
-                    if (samplesIndex <= samples.length) {
-                        firstIndex = 0;
-                        lastIndex = samplesIndex - 1;
+                        firstIndex = samplesIndex % samples.length;
+                        lastIndex = (samplesIndex - 1) % samples.length;
+                        if (samplesIndex <= samples.length) {
+                            firstIndex = 0;
+                            lastIndex = samplesIndex - 1;
+                        }
+                        if (lastIndex < firstIndex) {
+                            lastIndex += samples.length;
+                        }
+                        for (int i = firstIndex; i <= lastIndex; i++) {
+                            recorder.recordSamples(samples[i % samples.length]);
+                            recorderMp4.recordSamples(samples[i % samples.length]);
+                        }
+                    } catch (FFmpegFrameRecorder.Exception e) {
+                        Log.v(LOG_TAG, e.getMessage());
+                        e.printStackTrace();
                     }
-                    if (lastIndex < firstIndex) {
-                        lastIndex += samples.length;
-                    }
-                    for (int i = firstIndex; i <= lastIndex; i++) {
-                        recorder.recordSamples(samples[i % samples.length]);
-                        recorderMp4.recordSamples(samples[i % samples.length]);
-                    }
+                }
+
+                recording = false;
+                Log.v(LOG_TAG, "Finishing recording, calling stop and release on recorder");
+                try {
+                    recorder.stop();
+                    recorder.release();
+                    recorderMp4.stop();
+                    recorderMp4.release();
                 } catch (FFmpegFrameRecorder.Exception e) {
-                    Log.v(LOG_TAG, e.getMessage());
                     e.printStackTrace();
                 }
+                recorder = null;
+                recorderMp4 = null;
             }
 
-            recording = false;
-            Log.v(LOG_TAG, "Finishing recording, calling stop and release on recorder");
-            try {
-                recorder.stop();
-                recorder.release();
-                recorderMp4.stop();
-                recorderMp4.release();
-            } catch (FFmpegFrameRecorder.Exception e) {
-                e.printStackTrace();
-            }
-            recorder = null;
-            recorderMp4 = null;
+
 
         }
     }
@@ -314,13 +319,13 @@ public class RecordActivity extends Activity implements OnClickListener {
 //            startRecord();
             startRecording();
             Log.w(LOG_TAG, "Start Button Pushed");
-            btnRecorderControl.setText("Stop");
+            btnRecorderControl.setText("暂停");
         } else {
             // This will trigger the audio recording loop to stop and then set isRecorderStart = false;
             stopRecording();
 //            endRecord();
             Log.w(LOG_TAG, "Stop Button Pushed");
-            btnRecorderControl.setText("Start");
+            btnRecorderControl.setText("开始");
         }
     }
 
@@ -512,6 +517,7 @@ public class RecordActivity extends Activity implements OnClickListener {
                             recorder.setTimestamp(t);
                         }
                         recorder.record(yuvImage);
+
                         if (t > recorderMp4.getTimestamp()) {
                             recorderMp4.setTimestamp(t);
                         }
@@ -525,20 +531,19 @@ public class RecordActivity extends Activity implements OnClickListener {
     }
 
     public String videoDir() {
-        SimpleDateFormat ft = new SimpleDateFormat ("yyyy-MM-dd");
-        File sampleDir = new File(FileUtils.getAppPath());
-        Log.i("///",FileUtils.getAppPath());
-        if (!sampleDir.exists()) {
-            sampleDir.mkdirs();
-        }
-        File vecordDir = sampleDir;
-        // 创建文件
-        try {
-            videoFile = File.createTempFile("公证"+ft.format(new Date()), ".mp4", vecordDir);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
+        SimpleDateFormat ft = new SimpleDateFormat ("MM-dd-hh-mm-ss");
+        videoFile = new File(FileUtils.getAppPath()+"公证"+ft.format(new Date())+".mp4");
+        Log.i("///",FileUtils.getAppPath()+"公证"+ft.format(new Date())+".mp4");
+//        if (!sampleDir.exists()) {
+//            sampleDir.mkdirs();
+//        }
+//        File vecordDir = sampleDir;
+//        // 创建文件
+//        try {
+//            videoFile = File.createTempFile("公证"+ft.format(new Date()), ".mp4", vecordDir);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
         return null;
     }
 }

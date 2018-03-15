@@ -17,7 +17,7 @@ import cn.cherish.shdfgzrecoder.AppContext;
  * Created by Jeroen Mols on 06/12/15.
  */
 public class NativeCamera {
-    private Camera camera = null;
+    public Camera camera = null;
     private Parameters params = null;
 
     public Camera getNativeCamera() {
@@ -30,8 +30,6 @@ public class NativeCamera {
         }else{
             camera = Camera.open(CameraInfo.CAMERA_FACING_FRONT);
         }
-//        AppContext.setBackCamera(!AppContext.getBackCamera());
-
     }
 
     public void unlockNativeCamera() {
