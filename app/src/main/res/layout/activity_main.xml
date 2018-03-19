@@ -11,12 +11,15 @@
         android:id="@+id/record_btn"
         android:layout_centerHorizontal="true"
         android:text="录像/推流"
-        android:layout_width="100dp"
+        android:textSize="22sp"
+        android:layout_width="wrap_content"
         android:layout_height="50dp"
         />
 
     <Button
+        android:layout_marginTop="30dp"
         android:id="@+id/recorder"
+        android:textSize="22sp"
         android:layout_below="@id/record_btn"
         android:layout_width="100dp"
         android:layout_height="50dp"

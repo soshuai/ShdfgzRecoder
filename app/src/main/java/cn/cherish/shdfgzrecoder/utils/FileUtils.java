@@ -6,14 +6,14 @@ import java.io.File;
 
 public class FileUtils {
     private static final String SD_PATH = Environment.getExternalStorageDirectory().getPath();
-    public static final String NAME = "AAABBB";
+    public static final String NAME = "ACCC";
 
     public static String getAppPath() {
         StringBuilder sb = new StringBuilder();
         sb.append(SD_PATH);
         sb.append(File.separator);
-        sb.append(NAME);
-        sb.append(File.separator);
+//        sb.append(NAME);
+//        sb.append(File.separator);
         return sb.toString();
     }
 

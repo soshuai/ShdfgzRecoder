@@ -20,11 +20,11 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 import org.bytedeco.javacpp.avutil;
 import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -34,11 +34,10 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
-
 import cn.cherish.shdfgzrecoder.utils.FileUtils;
 
 public class RecordActivity extends Activity implements OnClickListener {
-    private final static String LOG_TAG = "RecordActivity";
+    private final static String LOG_TAG = "RecordActivity-V";
     /* The number of seconds in the continuous record loop (or 0 to disable loop). */
     final int RECORD_LENGTH = 0;
     /* layout setting */
@@ -88,26 +87,16 @@ public class RecordActivity extends Activity implements OnClickListener {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         ffmpeg_link = getIntent().getStringExtra(KEY_STREAM_URL);
-//        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         setContentView(R.layout.activity_record);
         initLayout();
-    }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        recording = false;
-
-        if (cameraView != null) {
-            cameraView.stopPreview();
-        }
-
-        if (cameraDevice != null) {
-            cameraDevice.stopPreview();
-            cameraDevice.release();
-            cameraDevice = null;
-        }
+//        File file = new File("/storage/3164-3234/AAAAAAA.mp4");
+//        try {
+//            file.createNewFile();
+//        } catch (IOException e) {
+//            Log.i("///",e.getMessage());
+//            e.printStackTrace();
+//        }
     }
 
 
@@ -147,6 +136,8 @@ public class RecordActivity extends Activity implements OnClickListener {
 //        layoutParam.leftMargin = (int) (1.0 * bg_screen_bx * screenWidth / bg_width);
         try {
             cameraDevice = Camera.open();
+//            Camera.Parameters parameters = cameraDevice.getParameters();
+//            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);
         } catch (Exception e) {
             Log.e(LOG_TAG, "camera open fail, if it's occupied by other applications");
             finish();
@@ -201,15 +192,15 @@ public class RecordActivity extends Activity implements OnClickListener {
         recorder.setVideoCodec(28);
         recorder.setFormat("flv");
         recorder.setSampleRate(sampleAudioRateInHz);
-        recorder.setFrameRate(frameRate);
+        recorder.setFrameRate(frameRate);//frameRate
 
         videoDir();
         recorderMp4=new FFmpegFrameRecorder(videoFile,imageWidth,imageHeight,1);
         recorder.setVideoCodec(28);
         recorderMp4.setFormat("mp4");
-        recorder.setSampleRate(sampleAudioRateInHz);
+//        recorder.setSampleRate(sampleAudioRateInHz);
 //        recorderMp4.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
-        recorderMp4.setFrameRate(frameRate);//
+        recorderMp4.setFrameRate(50);//frameRate
 
         Log.i(LOG_TAG, "recorder initialize success");
         audioRecordRunnable = new AudioRecordRunnable();
@@ -298,6 +289,23 @@ public class RecordActivity extends Activity implements OnClickListener {
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        recording = false;
+
+        if (cameraView != null) {
+            cameraView.stopPreview();
+        }
+
+        if (cameraDevice != null) {
+            cameraDevice.stopPreview();
+            cameraDevice.release();
+            cameraDevice = null;
+        }
+    }
+
+    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
 
         if (keyCode == KeyEvent.KEYCODE_BACK) {
@@ -315,18 +323,25 @@ public class RecordActivity extends Activity implements OnClickListener {
 
     @Override
     public void onClick(View v) {
-        if (!recording) {
-//            startRecord();
-            startRecording();
-            Log.w(LOG_TAG, "Start Button Pushed");
-            btnRecorderControl.setText("暂停");
-        } else {
-            // This will trigger the audio recording loop to stop and then set isRecorderStart = false;
-            stopRecording();
-//            endRecord();
-            Log.w(LOG_TAG, "Stop Button Pushed");
-            btnRecorderControl.setText("开始");
+        switch (v.getId()) {
+            case R.id.recorder_control:
+                if (!recording) {
+//                    Log.i(LOG_TAG, "Start Button Pushed");
+                    Toast.makeText(this, "正在开启,请稍等", Toast.LENGTH_SHORT).show();
+                    startRecording();
+                    btnRecorderControl.setText("暂停");
+                } else {
+                    // This will trigger the audio recording loop to stop and then set isRecorderStart = false;
+                    Toast.makeText(this, "正在关闭,请稍等", Toast.LENGTH_SHORT).show();
+//                    Log.i(LOG_TAG, "Stop Button Pushed");
+                    stopRecording();
+                    btnRecorderControl.setText("开始");
+                }
+                 break;
+            default:
+                 break;
         }
+
     }
 
 
@@ -531,9 +546,17 @@ public class RecordActivity extends Activity implements OnClickListener {
     }
 
     public String videoDir() {
-        SimpleDateFormat ft = new SimpleDateFormat ("MM-dd-hh-mm-ss");
+//        File file = new File("/storage/3164-3234/Video");
+//        String path=search(file);
+//        try {
+//            file.createNewFile(【);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//        }
+
+        SimpleDateFormat ft = new SimpleDateFormat ("MM-dd-hh-mm");
         videoFile = new File(FileUtils.getAppPath()+"公证"+ft.format(new Date())+".mp4");
-        Log.i("///",FileUtils.getAppPath()+"公证"+ft.format(new Date())+".mp4");
+//        Log.i("///",FileUtils.getAppPath()+"公证"+ft.format(new Date())+".mp4");
 //        if (!sampleDir.exists()) {
 //            sampleDir.mkdirs();
 //        }
@@ -545,5 +568,19 @@ public class RecordActivity extends Activity implements OnClickListener {
 //            e.printStackTrace();
 //        }
         return null;
+    }
+
+    private String search(File fileold) {///storage/3164-3234/Video/VID_20170406105425_30fps.mp4
+            File[] files = fileold.listFiles();
+            if (files!=null){
+                if (files.length > 0) {
+                    for (int j = 0; j < files.length; j++) {
+                        Log.i("///",files[j].getPath());
+                    }
+                }
+                return "/storage/3164-3234/AABB/";
+            }else{
+                return FileUtils.getAppPath();
+            }
     }
 }
