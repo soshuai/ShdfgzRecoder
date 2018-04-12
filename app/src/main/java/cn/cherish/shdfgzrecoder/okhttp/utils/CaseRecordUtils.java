@@ -1,4 +1,4 @@
-package cn.cherish.shdfgzrecoder.utils;
+package cn.cherish.shdfgzrecoder.okhttp.utils;
 
 import android.content.Context;
 import android.os.Environment;
@@ -7,6 +7,7 @@ import android.os.Environment;
 import java.io.File;
 
 import cn.cherish.shdfgzrecoder.AppContext;
+import cn.cherish.shdfgzrecoder.okhttp.utils.MyLocation;
 
 public class CaseRecordUtils {
 
@@ -95,9 +96,9 @@ public class CaseRecordUtils {
 //        return WATER_MARK_DIR + makeFileId(recordId) + ".jpg";
 //    }
 
-//    public static final MyLocation getCurrentLocation(Context context) {
-//        return MyLocationListener.cacheLocation;
-//    }
+    public static final MyLocation getCurrentLocation(Context context) {
+        return MyLocationListener.cacheLocation;
+    }
 //
 //    public static String makeFileId(int recordId) {
 //        // TODO Auto-generated method stub

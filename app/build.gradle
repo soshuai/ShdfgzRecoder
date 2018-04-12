@@ -26,7 +26,11 @@ android {
         exclude 'META-INF/maven/org.bytedeco.javacpp-presets/opencv/pom.xml'
         exclude 'META-INF/maven/org.bytedeco.javacpp-presets/ffmpeg/pom.properties'
         exclude 'META-INF/maven/org.bytedeco.javacpp-presets/ffmpeg/pom.xml'
+
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/NOTICE'
     }
+
 }
 
 dependencies {
@@ -39,4 +43,7 @@ dependencies {
     compile group: 'org.bytedeco.javacpp-presets', name: 'opencv', version: '3.0.0-1.1', classifier: 'android-x86'
     compile group: 'org.bytedeco.javacpp-presets', name: 'ffmpeg', version: '2.8.1-1.1', classifier: 'android-arm'
     compile group: 'org.bytedeco.javacpp-presets', name: 'ffmpeg', version: '2.8.1-1.1', classifier: 'android-x86'
+    compile files('libs/jackson-annotations-2.3.1.jar')
+    compile files('libs/jackson-core-2.3.1.jar')
+    compile files('libs/jackson-databind-2.3.1.jar')
 }

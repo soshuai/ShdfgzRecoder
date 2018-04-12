@@ -58,7 +58,8 @@
         </activity>
         <activity
             android:name=".RecordActivity"
-            android:screenOrientation="portrait"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="landscape"
             android:theme="@style/AppTheme.NoActionBar" />
         <activity android:name=".VideoCaptureActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"

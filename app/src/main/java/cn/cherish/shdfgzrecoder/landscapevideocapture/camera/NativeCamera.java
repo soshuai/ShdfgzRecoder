@@ -77,7 +77,7 @@ public class NativeCamera {
     }
 
     public void setDisplayOrientation(int degrees) {
-        camera.setDisplayOrientation(degrees);
+//        camera.setDisplayOrientation(degrees);
     }
 
     public int getCameraOrientation() {

@@ -61,8 +61,8 @@ public class RecordActivity extends Activity implements OnClickListener {
     private FFmpegFrameRecorder recorderMp4;
     private boolean isPreviewOn = false;
     private int sampleAudioRateInHz = 44100;
-    private int imageWidth = 320;
-    private int imageHeight = 240;
+    private int imageWidth = 320;//320
+    private int imageHeight = 240;//240
     private int frameRate = 30;
     /* audio data getting thread */
     private AudioRecord audioRecord;
@@ -86,6 +86,7 @@ public class RecordActivity extends Activity implements OnClickListener {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
         ffmpeg_link = getIntent().getStringExtra(KEY_STREAM_URL);
         setContentView(R.layout.activity_record);
         initLayout();
@@ -118,6 +119,7 @@ public class RecordActivity extends Activity implements OnClickListener {
         /* add control button: start and stop */
         btnRecorderControl = (Button) findViewById(R.id.recorder_control);
         btnRecorderControl.setText("开始");
+        btnRecorderControl.setBackgroundColor(getResources().getColor(R.color.white));
         btnRecorderControl.setOnClickListener(this);
 
         /* add camera view */
@@ -192,15 +194,14 @@ public class RecordActivity extends Activity implements OnClickListener {
         recorder.setVideoCodec(28);
         recorder.setFormat("flv");
         recorder.setSampleRate(sampleAudioRateInHz);
-        recorder.setFrameRate(frameRate);//frameRate
+//        recorder.setFrameRate(frameRate);//frameRate
 
         videoDir();
         recorderMp4=new FFmpegFrameRecorder(videoFile,imageWidth,imageHeight,1);
-        recorder.setVideoCodec(28);
         recorderMp4.setFormat("mp4");
 //        recorder.setSampleRate(sampleAudioRateInHz);
-//        recorderMp4.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
-        recorderMp4.setFrameRate(50);//frameRate
+        recorderMp4.setPixelFormat(avutil.AV_PIX_FMT_YUV420P);
+//        recorderMp4.setFrameRate(30);//frameRate
 
         Log.i(LOG_TAG, "recorder initialize success");
         audioRecordRunnable = new AudioRecordRunnable();
@@ -330,12 +331,15 @@ public class RecordActivity extends Activity implements OnClickListener {
                     Toast.makeText(this, "正在开启,请稍等", Toast.LENGTH_SHORT).show();
                     startRecording();
                     btnRecorderControl.setText("暂停");
+                    btnRecorderControl.setBackgroundColor(getResources().getColor(R.color.red));
                 } else {
                     // This will trigger the audio recording loop to stop and then set isRecorderStart = false;
                     Toast.makeText(this, "正在关闭,请稍等", Toast.LENGTH_SHORT).show();
 //                    Log.i(LOG_TAG, "Stop Button Pushed");
                     stopRecording();
                     btnRecorderControl.setText("开始");
+                    btnRecorderControl.setBackgroundColor(getResources().getColor(R.color.white));
+
                 }
                  break;
             default:
@@ -430,7 +434,7 @@ public class RecordActivity extends Activity implements OnClickListener {
             mHolder.addCallback(CameraView.this);
             mHolder.setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
             mCamera.setPreviewCallback(CameraView.this);
-            mCamera.setDisplayOrientation(90);
+//            mCamera.setDisplayOrientation(90);
         }
 
         @Override
@@ -467,6 +471,7 @@ public class RecordActivity extends Activity implements OnClickListener {
                     break;
                 }
             }
+            //===============导致模糊的原因
             camParams.setPreviewSize(imageWidth, imageHeight);
 
             Log.v(LOG_TAG, "Setting imageWidth: " + imageWidth + " imageHeight: " + imageHeight + " frameRate: " + frameRate);

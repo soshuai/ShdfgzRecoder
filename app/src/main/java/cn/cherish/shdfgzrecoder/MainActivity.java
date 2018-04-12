@@ -14,7 +14,7 @@ import java.util.Date;
 import cn.cherish.shdfgzrecoder.landscapevideocapture.configuration.CaptureConfiguration;
 import cn.cherish.shdfgzrecoder.landscapevideocapture.configuration.PredefinedCaptureConfigurations.CaptureResolution;
 import cn.cherish.shdfgzrecoder.landscapevideocapture.configuration.PredefinedCaptureConfigurations.CaptureQuality;
-import cn.cherish.shdfgzrecoder.utils.CaseRecordUtils;
+import cn.cherish.shdfgzrecoder.okhttp.utils.CaseRecordUtils;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private static final String STREAM_URL = "rtmp://pili-publish.push.expresscourts.com/expresscourt/test1";
@@ -43,7 +43,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     public void onClick(View v) {
         switch (v.getId()) {
             case R.id.record_btn:
-                Log.i("ssss", "点了");
                 startActivity(RecordActivity.makeIntent(STREAM_URL));
                 break;
             case R.id.recorder:
